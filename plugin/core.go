@@ -13,7 +13,6 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-// PluginRequest represents the request structure for plugin execution
 type PluginRequest struct {
 	Method  string                 `json:"method"`
 	Action  string                 `json:"action"`
@@ -23,7 +22,6 @@ type PluginRequest struct {
 	Mode    string                 `json:"mode"`
 }
 
-// PluginResponse represents the response structure for plugin execution
 type PluginResponse struct {
 	Code    int         `json:"code"`
 	Message string      `json:"message"`
@@ -31,14 +29,12 @@ type PluginResponse struct {
 	Time    int64       `json:"time"`
 }
 
-// Core is the main plugin execution engine
 type Core struct {
 	securityConfig *SecurityConfig
 	sandbox        *Sandbox
 	LogWriter      io.Writer // 日志输出目标，默认 os.Stdout
 }
 
-// NewCore creates a new plugin core instance
 func NewCore() *Core {
 	config := DefaultSecurityConfig()
 	return &Core{
@@ -48,7 +44,6 @@ func NewCore() *Core {
 	}
 }
 
-// NewCoreWithConfig creates a new plugin core instance with custom security configuration
 func NewCoreWithConfig(config *SecurityConfig) *Core {
 	return &Core{
 		securityConfig: config,
@@ -57,7 +52,6 @@ func NewCoreWithConfig(config *SecurityConfig) *Core {
 	}
 }
 
-// ExecuteScript is a convenience function for direct script execution
 func ExecuteScript(script string, params map[string]interface{}) (interface{}, error) {
 	core := NewCore()
 	req := PluginRequest{
@@ -73,7 +67,6 @@ func ExecuteScript(script string, params map[string]interface{}) (interface{}, e
 	return resp.Data, nil
 }
 
-// ExecuteScriptWithConfig executes a script with custom security configuration
 func ExecuteScriptWithConfig(script string, params map[string]interface{}, config *SecurityConfig) (interface{}, error) {
 	core := NewCoreWithConfig(config)
 	req := PluginRequest{
@@ -89,7 +82,6 @@ func ExecuteScriptWithConfig(script string, params map[string]interface{}, confi
 	return resp.Data, nil
 }
 
-// ExecuteRoute executes a script in route mode
 func ExecuteRoute(script string, action string, params map[string]interface{}) (interface{}, error) {
 	core := NewCore()
 	req := PluginRequest{
@@ -105,7 +97,6 @@ func ExecuteRoute(script string, action string, params map[string]interface{}) (
 	return resp.Data, nil
 }
 
-// ExecutePipeline executes a script in pipeline mode
 func ExecutePipeline(script string, params map[string]interface{}) (interface{}, error) {
 	core := NewCore()
 	req := PluginRequest{
@@ -120,7 +111,6 @@ func ExecutePipeline(script string, params map[string]interface{}) (interface{},
 	return resp.Data, nil
 }
 
-// Execute runs the Lua script and returns the result
 func (c *Core) Execute(req PluginRequest) PluginResponse {
 	startTime := time.Now()
 
@@ -203,7 +193,6 @@ func (c *Core) Execute(req PluginRequest) PluginResponse {
 	}
 }
 
-// validateRequest checks if the request is valid
 func (c *Core) validateRequest(req PluginRequest) error {
 	if req.Script == "" {
 		return fmt.Errorf("script is required")
@@ -211,11 +200,7 @@ func (c *Core) validateRequest(req PluginRequest) error {
 	return nil
 }
 
-// registerBuiltinFunctions registers built-in functions for Lua
-// 权限检查不再在函数内部进行，而是通过 request_permission 由脚本自行请求
 func (c *Core) registerBuiltinFunctions(L *lua.LState) {
-
-	// ─── 权限请求（脚本主动调用，返回 true/false）───
 	L.SetGlobal("request_permission", L.NewFunction(func(L *lua.LState) int {
 		permType := L.CheckString(1)
 		desc := L.OptString(2, "")
@@ -230,7 +215,6 @@ func (c *Core) registerBuiltinFunctions(L *lua.LState) {
 		return 1
 	}))
 
-	// ─── HTTP请求 ───
 	L.SetGlobal("http_request", L.NewFunction(func(L *lua.LState) int {
 		url := L.CheckString(1)
 		method := L.OptString(2, "GET")
@@ -246,7 +230,6 @@ func (c *Core) registerBuiltinFunctions(L *lua.LState) {
 		return 1
 	}))
 
-	// ─── JSON解析 ───
 	L.SetGlobal("json_parse", L.NewFunction(func(L *lua.LState) int {
 		jsonStr := L.CheckString(1)
 
@@ -262,7 +245,6 @@ func (c *Core) registerBuiltinFunctions(L *lua.LState) {
 		return 1
 	}))
 
-	// ─── JSON序列化 ───
 	L.SetGlobal("json_stringify", L.NewFunction(func(L *lua.LState) int {
 		val := L.CheckAny(1)
 
@@ -278,7 +260,6 @@ func (c *Core) registerBuiltinFunctions(L *lua.LState) {
 		return 1
 	}))
 
-	// ─── 日志 ───
 	logWriter := c.LogWriter
 	if logWriter == nil {
 		logWriter = os.Stdout
@@ -289,9 +270,6 @@ func (c *Core) registerBuiltinFunctions(L *lua.LState) {
 		return 0
 	}))
 
-	// ─── 执行外部程序 ───
-	// 用法: execute_external("python", "print('hello')") -> stdout string
-	//       execute_external("python", "script.py")       -> stdout string
 	L.SetGlobal("execute_external", L.NewFunction(func(L *lua.LState) int {
 		program := L.CheckString(1)
 		scriptOrArg := L.OptString(2, "")
@@ -307,7 +285,6 @@ func (c *Core) registerBuiltinFunctions(L *lua.LState) {
 		return 1
 	}))
 
-	// ─── 读取文件 ───
 	L.SetGlobal("read_file", L.NewFunction(func(L *lua.LState) int {
 		filePath := L.CheckString(1)
 
@@ -322,7 +299,6 @@ func (c *Core) registerBuiltinFunctions(L *lua.LState) {
 		return 1
 	}))
 
-	// ─── 写入文件 ───
 	L.SetGlobal("write_file", L.NewFunction(func(L *lua.LState) int {
 		filePath := L.CheckString(1)
 		content := L.CheckString(2)
@@ -339,18 +315,14 @@ func (c *Core) registerBuiltinFunctions(L *lua.LState) {
 	}))
 }
 
-// executeExternal 执行外部程序
 func (c *Core) executeExternal(program string, scriptOrArg string) (string, error) {
 	var cmd *exec.Cmd
 
-	// 判断是内联代码还是文件路径
 	if strings.HasSuffix(scriptOrArg, ".py") || strings.HasSuffix(scriptOrArg, ".js") ||
 		strings.HasSuffix(scriptOrArg, ".lua") || strings.HasSuffix(scriptOrArg, ".sh") ||
 		strings.HasSuffix(scriptOrArg, ".bat") {
-		// 文件模式：直接执行文件
 		cmd = exec.Command(program, scriptOrArg)
 	} else {
-		// 内联模式：通过命令行参数执行
 		switch strings.ToLower(program) {
 		case "python", "python3":
 			cmd = exec.Command(program, "-c", scriptOrArg)
@@ -359,7 +331,6 @@ func (c *Core) executeExternal(program string, scriptOrArg string) (string, erro
 		case "lua":
 			cmd = exec.Command(program, "-e", scriptOrArg)
 		default:
-			// 通用：将脚本作为参数
 			cmd = exec.Command(program, scriptOrArg)
 		}
 	}
@@ -368,7 +339,6 @@ func (c *Core) executeExternal(program string, scriptOrArg string) (string, erro
 	return string(output), err
 }
 
-// httpRequest performs an HTTP request
 func (c *Core) httpRequest(url, method, body string) ([]byte, error) {
 	client := &http.Client{
 		Timeout: 30 * time.Second,
@@ -400,7 +370,6 @@ func (c *Core) httpRequest(url, method, body string) ([]byte, error) {
 	return result, nil
 }
 
-// callLuaFunction calls a Lua function with the given parameters
 func (c *Core) callLuaFunction(L *lua.LState, methodName string, params map[string]interface{}) (interface{}, error) {
 	fn := L.GetGlobal(methodName)
 	if fn.Type() != lua.LTFunction {
@@ -430,7 +399,6 @@ func (c *Core) callLuaFunction(L *lua.LState, methodName string, params map[stri
 	return c.luaToGoValue(ret), nil
 }
 
-// routeByAction routes to the appropriate handler based on the action name
 func (c *Core) routeByAction(L *lua.LState, action string, params map[string]interface{}) (interface{}, error) {
 	routes := L.GetGlobal("routes")
 	if routes.Type() != lua.LTTable {
@@ -465,7 +433,6 @@ func (c *Core) routeByAction(L *lua.LState, action string, params map[string]int
 	return c.luaToGoValue(ret), nil
 }
 
-// executePipeline executes a series of steps defined in the Lua script
 func (c *Core) executePipeline(L *lua.LState, params map[string]interface{}) (interface{}, error) {
 	pipelineFn := L.GetGlobal("pipeline")
 	if pipelineFn.Type() != lua.LTFunction {
@@ -495,7 +462,6 @@ func (c *Core) executePipeline(L *lua.LState, params map[string]interface{}) (in
 	return c.luaToGoValue(ret), nil
 }
 
-// goToLuaValue converts a Go value to a Lua value
 func (c *Core) goToLuaValue(L *lua.LState, val interface{}) lua.LValue {
 	switch v := val.(type) {
 	case nil:
@@ -530,7 +496,6 @@ func (c *Core) goToLuaValue(L *lua.LState, val interface{}) lua.LValue {
 	}
 }
 
-// luaToGoValue converts a Lua value to a Go value
 func (c *Core) luaToGoValue(val lua.LValue) interface{} {
 	switch v := val.(type) {
 	case *lua.LNilType:
@@ -561,7 +526,6 @@ func (c *Core) luaToGoValue(val lua.LValue) interface{} {
 	}
 }
 
-// isLuaTableArray checks if a Lua table is an array
 func (c *Core) isLuaTableArray(tbl *lua.LTable) bool {
 	maxN := tbl.MaxN()
 	return maxN > 0 && maxN == tbl.Len()

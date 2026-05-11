@@ -83,6 +83,25 @@ set CGO_ENABLED=1
 go build -o oshin-cli.exe ./cmd/cli/
 ```
 
+#### 直接执行
+
+```bash
+# 直接执行 Lua 脚本
+oshin-cli.exe test/simple.lua
+
+# 指定模式和动作
+oshin-cli.exe test/simple.lua route add
+oshin-cli.exe test/simple.lua pipeline
+
+# 传递参数
+oshin-cli.exe test/simple.lua direct main '{"a":10,"b":20}'
+```
+
+输出格式为 JSON，方便程序解析：
+```json
+{"code":0, "message":"success", "data":{...}, "time":123}
+```
+
 #### 交互模式
 
 ```bash
@@ -157,12 +176,12 @@ echo $result
 
 #### 与 FFI 模式的区别
 
-| 特性 | CLI JSON 模式 | FFI 共享库 |
-|---|---|---|
-| 调用方式 | 子进程 + stdin/stdout | 函数调用 |
-| 权限回调 | 无（默认拒绝） | 支持 C 回调 |
-| 性能 | 较低（进程开销） | 高（无进程开销） |
-| 适用场景 | 脚本编排、CI/CD、调试 | 应用内嵌入、高性能场景 |
+| 特性 | CLI 直接模式 | CLI JSON 模式 | FFI 共享库 |
+|---|---|---|---|
+| 调用方式 | 命令行参数 | 子进程 + stdin/stdout | 函数调用 |
+| 权限回调 | 无（默认拒绝） | 无（默认拒绝） | 支持 C 回调 |
+| 性能 | 较低（进程开销） | 较低（进程开销） | 高（无进程开销） |
+| 适用场景 | 开发调试、简单脚本 | 脚本编排、CI/CD | 应用内嵌入、高性能场景 |
 
 CLI 安全模型：
 - 脚本通过 `request_permission(type, description)` 主动请求权限
