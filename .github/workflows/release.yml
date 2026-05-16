@@ -22,12 +22,12 @@ jobs:
               "template": "#{{CHANGELOG}}",
               "categories": [
                 {
-                    "title": "## Feature",
-                    "labels": ["feat", "feature"]
+                  "title": "## Feature",
+                  "labels": ["feat", "feature"]
                 },
                 {
-                    "title": "## Fix",
-                    "labels": ["fix", "bug"]
+                  "title": "## Fix",
+                  "labels": ["fix", "bug"]
                 },
                 {
                   "title": "## Update",
@@ -38,13 +38,13 @@ jobs:
                   "labels": ["chore"]
                 },
                 {
-                    "title": "## Other",
-                    "labels": []
+                  "title": "## Other",
+                  "labels": []
                 }
               ],
               "label_extractor": [
                 {
-                  "pattern": "^(update|build|bug|chore|ci|feature|docs|feat|fix|perf|refactor|revert|style|test){1}(\$[\\w\\-\\.]+\$)?(!)?: ([\\S]+[\\s\\S]*)",
+                  "pattern": "^(update|build|bug|chore|ci|feature|docs|feat|fix|perf|refactor|revert|style|test){1}(\\([\\w\\-\\.]+\\))?(!)?[:：]\s*(.+)$",
                   "on_property": "title",
                   "target": "$1"
                 }
