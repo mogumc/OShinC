@@ -31,17 +31,21 @@ import (
 	"oshin-core/plugin"
 )
 
-//export OShinSetPermissionCallback
+var version = "1.0.0" // 版本号，可通过 -ldflags "-X main.version=xxx" 注入
+
 // 设置权限回调函数。宿主程序必须在首次 Execute 之前调用。
 // callback 签名: int callback(perm_type, description, details_json)
 // 返回 1=允许, 0=拒绝
+//
+//export OShinSetPermissionCallback
 func OShinSetPermissionCallback(cCallback unsafe.Pointer) {
 	C.oshin_set_perm_callback(C.oshin_perm_cb(cCallback))
 }
 
-//export OShinExecute
 // mode 格式: "direct", "route:action_name", "pipeline"
 // configJSON 格式: {"timeout":5000,"pre_authorized":["network","exec"]}
+//
+//export OShinExecute
 func OShinExecute(cScript *C.char, cParams *C.char, cMode *C.char, cConfigJSON *C.char) *C.char {
 	script := C.GoString(cScript)
 	modeRaw := C.GoString(cMode)
@@ -125,7 +129,7 @@ func OShinFreeString(str *C.char) {
 
 //export OShinVersion
 func OShinVersion() *C.char {
-	return C.CString("1.0.0")
+	return C.CString(version)
 }
 
 func main() {}

@@ -14,7 +14,16 @@ import (
 	"oshin-core/plugin"
 )
 
-var jsonMode *bool
+var (
+	jsonMode *bool
+	showVer  *bool
+	version  = "1.0.0" // 版本号，可通过 -ldflags "-X main.version=xxx" 注入
+)
+
+// PrintVersion 打印版本信息
+func PrintVersion() {
+	fmt.Printf("oshin-cli version %s\n", version)
+}
 
 type CLI struct {
 	core   *plugin.Core
@@ -41,37 +50,37 @@ func parseConfig() *plugin.SecurityConfig {
 	timeout := flag.Int("timeout", config.Timeout, "脚本执行超时时间 (毫秒)")
 	maxMemory := flag.Int("max-memory", config.MaxMemoryMB, "最大内存使用 (MB)")
 	jsonMode = flag.Bool("json", false, "JSON模式: 从stdin读取请求JSON，输出结果JSON")
-	showHelpFlag := flag.Bool("help", false, "显示帮助信息")
 
-	flag.Parse()
-
-	if *showHelpFlag {
-		fmt.Println("OShin-core 插件CLI工具帮助:")
-		fmt.Println()
-		fmt.Println("用法:")
-		fmt.Println("  oshin-cli <脚本文件> [模式] [动作] [参数JSON]  - 直接执行Lua脚本")
-		fmt.Println("  oshin-cli --json                               - JSON模式 (供外部程序调用)")
-		fmt.Println("  oshin-cli                                      - 进入交互模式")
-		fmt.Println("  oshin-cli --help                               - 显示此帮助信息")
-		fmt.Println()
-		fmt.Println("直接执行模式:")
-		fmt.Println("  脚本文件: Lua脚本文件路径")
-		fmt.Println("  模式: direct (默认), route, pipeline")
-		fmt.Println("  动作: 路由模式下的动作名称")
-		fmt.Println("  参数JSON: 传递给脚本的参数，JSON格式")
-		fmt.Println()
-		fmt.Println("示例:")
-		fmt.Println("  oshin-cli test/simple.lua                     - 执行simple.lua")
-		fmt.Println("  oshin-cli test/simple.lua route add           - 路由模式，动作为add")
-		fmt.Println("  oshin-cli test/simple.lua pipeline            - 管道模式")
-		fmt.Println("  oshin-cli test/simple.lua direct main '{\"a\":10,\"b\":20}' - 传递参数")
-		os.Exit(0)
-	}
+	// 注意: flag.Parse() 在 main() 中统一调用
 
 	config.Timeout = *timeout
 	config.MaxMemoryMB = *maxMemory
 
 	return config
+}
+
+func showHelpAndExit() {
+	fmt.Println("OShin-core 插件CLI工具帮助:")
+	fmt.Println()
+	fmt.Println("用法:")
+	fmt.Println("  oshin-cli <脚本文件> [模式] [动作] [参数JSON]  - 直接执行Lua脚本")
+	fmt.Println("  oshin-cli --json                               - JSON模式 (供外部程序调用)")
+	fmt.Println("  oshin-cli                                      - 进入交互模式")
+	fmt.Println("  oshin-cli --help                               - 显示此帮助信息")
+	fmt.Println("  oshin-cli --version                            - 显示版本信息")
+	fmt.Println()
+	fmt.Println("直接执行模式:")
+	fmt.Println("  脚本文件: Lua脚本文件路径")
+	fmt.Println("  模式: direct (默认), route, pipeline")
+	fmt.Println("  动作: 路由模式下的动作名称")
+	fmt.Println("  参数JSON: 传递给脚本的参数，JSON格式")
+	fmt.Println()
+	fmt.Println("示例:")
+	fmt.Println("  oshin-cli test/simple.lua                     - 执行simple.lua")
+	fmt.Println("  oshin-cli test/simple.lua route add           - 路由模式，动作为add")
+	fmt.Println("  oshin-cli test/simple.lua pipeline            - 管道模式")
+	fmt.Println("  oshin-cli test/simple.lua direct main '{\"a\":10,\"b\":20}' - 传递参数")
+	os.Exit(0)
 }
 
 func (c *CLI) Run() {
@@ -315,6 +324,19 @@ func (c *CLI) showHelp() {
 }
 
 func main() {
+	// 定义标志
+	showVer = flag.Bool("version", false, "显示版本信息")
+	flag.Usage = func() { showHelpAndExit() }
+
+	// 解析所有标志
+	flag.Parse()
+
+	// 检查 --version 标志
+	if *showVer {
+		PrintVersion()
+		os.Exit(0)
+	}
+
 	cli := NewCLI()
 
 	if jsonMode != nil && *jsonMode {
