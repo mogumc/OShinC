@@ -280,7 +280,9 @@ python test/test_permission.py
 | `route` | 通过 `routes` 表按 action 路由 | `PluginRequest.Action` |
 | `pipeline` | 执行 `pipeline(params)` 管道 | 固定入口 |
 
-## 内置 Lua 函数
+## 部分 Lua 函数说明
+
+### 基础函数
 
 | 函数 | 权限要求 | 说明 |
 |---|---|---|
@@ -293,7 +295,22 @@ python test/test_permission.py
 | `json_stringify(val)` | 无 | JSON 序列化 |
 | `log(msg)` | 无 | 日志输出 |
 
-**os 包函数**：
+### 编码 / 哈希函数
+
+| 函数 | 权限要求 | 说明 |
+|---|---|---|
+| `url_encode(str)` | 无 | URL 编码 |
+| `url_decode(str)` | 无 | URL 解码 | 
+| `md5(str)` | 无 | MD5 哈希（十六进制） |
+| `sha1(str)` | 无 | SHA-1 哈希（十六进制） | 
+| `sha256(str)` | 无 | SHA-256 哈希（十六进制） |
+| `base64_encode(str)` | 无 | Base64 编码 |
+| `base64_decode(str)` | 无 | Base64 解码 |
+| `hex_encode(str)` | 无 | Hex 编码 |
+| `hex_decode(str)` | 无 | Hex 解码 |
+
+
+### os 包函数
 
 | 函数 | 权限要求 | 说明 |
 |---|---|---|
