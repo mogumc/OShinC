@@ -32,7 +32,7 @@ type PluginResponse struct {
 type Core struct {
 	securityConfig *SecurityConfig
 	sandbox        *Sandbox
-	LogWriter      io.Writer // 日志输出目标，默认 os.Stdout
+	LogWriter      io.Writer
 }
 
 func NewCore() *Core {
@@ -220,6 +220,15 @@ func (c *Core) registerBuiltinFunctions(L *lua.LState) {
 		method := L.OptString(2, "GET")
 		body := L.OptString(3, "")
 
+		if !c.sandbox.RequestPermission(PermissionRequest{
+			Type:        PermNetwork,
+			Description: "网络请求: " + method + " " + url,
+			Details:     map[string]string{"url": url, "method": method},
+		}) {
+			L.Push(lua.LString(`{"error":"permission denied: network"}`))
+			return 1
+		}
+
 		result, err := c.httpRequest(url, method, body)
 		if err != nil {
 			L.Push(lua.LString(fmt.Sprintf(`{"error":"%s"}`, err.Error())))
@@ -274,6 +283,16 @@ func (c *Core) registerBuiltinFunctions(L *lua.LState) {
 		program := L.CheckString(1)
 		scriptOrArg := L.OptString(2, "")
 
+		if !c.sandbox.RequestPermission(PermissionRequest{
+			Type:        PermExec,
+			Description: "执行外部程序: " + program,
+			Details:     map[string]string{"program": program, "arg": scriptOrArg},
+		}) {
+			L.Push(lua.LString(""))
+			L.Push(lua.LString("permission denied: exec"))
+			return 2
+		}
+
 		stdout, err := c.executeExternal(program, scriptOrArg)
 		if err != nil {
 			L.Push(lua.LString(stdout))
@@ -287,6 +306,16 @@ func (c *Core) registerBuiltinFunctions(L *lua.LState) {
 
 	L.SetGlobal("read_file", L.NewFunction(func(L *lua.LState) int {
 		filePath := L.CheckString(1)
+
+		if !c.sandbox.RequestPermission(PermissionRequest{
+			Type:        PermFileRead,
+			Description: "读取文件: " + filePath,
+			Details:     map[string]string{"path": filePath},
+		}) {
+			L.Push(lua.LString(""))
+			L.Push(lua.LString("permission denied: file_read"))
+			return 2
+		}
 
 		content, err := os.ReadFile(filePath)
 		if err != nil {
@@ -302,6 +331,16 @@ func (c *Core) registerBuiltinFunctions(L *lua.LState) {
 	L.SetGlobal("write_file", L.NewFunction(func(L *lua.LState) int {
 		filePath := L.CheckString(1)
 		content := L.CheckString(2)
+
+		if !c.sandbox.RequestPermission(PermissionRequest{
+			Type:        PermFileWrite,
+			Description: "写入文件: " + filePath,
+			Details:     map[string]string{"path": filePath},
+		}) {
+			L.Push(lua.LBool(false))
+			L.Push(lua.LString("permission denied: file_write"))
+			return 2
+		}
 
 		err := os.WriteFile(filePath, []byte(content), 0644)
 		if err != nil {
