@@ -10,13 +10,11 @@ import (
 	"github.com/yuin/gopher-lua/parse"
 )
 
-// 禁止直接调用的危险函数名
 var forbiddenFunctions = []string{
 	"dofile", "loadfile", "load", "loadstring",
 	"collectgarbage", "newproxy",
 }
 
-// 禁止访问的全局表/变量名
 var forbiddenGlobals = []string{
 	"debug", "os", "io", "package",
 }
@@ -37,23 +35,13 @@ type PermissionRequest struct {
 	Details     map[string]string `json:"details"`     // 附加信息 (URL, 文件路径, 命令等)
 }
 
-// 返回 true 表示允许, false 表示拒绝
 type PermissionCallback func(req PermissionRequest) bool
 
 type SecurityConfig struct {
-	// 超时设置 (毫秒)
-	Timeout int
-
-	// 最大内存使用 (MB)
-	MaxMemoryMB int
-
-	// 权限回调：当脚本请求敏感操作时，由宿主程序决定是否允许
-	// 为 nil 时所有敏感操作均被拒绝
+	Timeout            int
+	MaxMemoryMB        int
 	PermissionCallback PermissionCallback
-
-	// 预授权列表：跳过回调直接允许的权限类型
-	// 相当于安全配置中的白名单
-	PreAuthorized map[PermissionType]bool
+	PreAuthorized      map[PermissionType]bool
 }
 
 func DefaultSecurityConfig() *SecurityConfig {
@@ -75,7 +63,6 @@ func NewSandbox(config *SecurityConfig) *Sandbox {
 	return &Sandbox{config: config}
 }
 
-// RequestPermission 请求权限：检查预授权或调用回调
 func (s *Sandbox) RequestPermission(req PermissionRequest) bool {
 	// 预授权检查
 	if s.config.PreAuthorized != nil && s.config.PreAuthorized[req.Type] {
@@ -90,12 +77,11 @@ func (s *Sandbox) RequestPermission(req PermissionRequest) bool {
 	return s.config.PermissionCallback(req)
 }
 
-// ValidateScript 使用AST解析验证脚本安全性，检测危险函数调用
 func (s *Sandbox) ValidateScript(script string) error {
 	reader := strings.NewReader(script)
 	chunk, err := parse.Parse(reader, "<script>")
 	if err != nil {
-		return fmt.Errorf("脚本解析失败: %v", err)
+		return fmt.Errorf("parse script failed: %v", err)
 	}
 
 	if err := s.checkAST(chunk); err != nil {
@@ -104,7 +90,6 @@ func (s *Sandbox) ValidateScript(script string) error {
 	return nil
 }
 
-// checkAST 遍历AST检测危险函数调用
 func (s *Sandbox) checkAST(stmts []ast.Stmt) error {
 	for _, stmt := range stmts {
 		if err := s.checkStmt(stmt); err != nil {
@@ -201,7 +186,6 @@ func (s *Sandbox) checkExpr(expr ast.Expr) error {
 		if err := s.checkExpr(e.Func); err != nil {
 			return err
 		}
-		// 检查 Receiver.Method 调用方式（如 os.execute）
 		if e.Receiver != nil {
 			if err := s.checkExpr(e.Receiver); err != nil {
 				return err
@@ -214,16 +198,14 @@ func (s *Sandbox) checkExpr(expr ast.Expr) error {
 		}
 	case *ast.IdentExpr:
 		name := e.Value
-		// 检查是否引用了危险全局变量
 		for _, forbidden := range forbiddenGlobals {
 			if name == forbidden {
-				return fmt.Errorf("检测到禁止使用全局变量: %s", name)
+				return fmt.Errorf("function denied: %s", name)
 			}
 		}
-		// 检查是否为危险函数名（用于检测 func() 调用）
 		for _, forbidden := range forbiddenFunctions {
 			if name == forbidden {
-				return fmt.Errorf("检测到禁止调用的危险函数: %s()", forbidden)
+				return fmt.Errorf("dangerous function denied: %s()", forbidden)
 			}
 		}
 	case *ast.AttrGetExpr:
@@ -233,7 +215,6 @@ func (s *Sandbox) checkExpr(expr ast.Expr) error {
 		if err := s.checkExpr(e.Key); err != nil {
 			return err
 		}
-		// 检查 _G["load"] 或 _G.load 等绕过方式
 		if ident, ok := e.Object.(*ast.IdentExpr); ok && ident.Value == "_G" {
 			var keyValue string
 			switch key := e.Key.(type) {
@@ -244,7 +225,7 @@ func (s *Sandbox) checkExpr(expr ast.Expr) error {
 			}
 			for _, forbidden := range forbiddenFunctions {
 				if keyValue == forbidden {
-					return fmt.Errorf("检测到通过 _G 访问危险函数: _G.%s 或 _G[\"%s\"]", forbidden, forbidden)
+					return fmt.Errorf("dangerous function denied: _G.%s 或 _G[\"%s\"]", forbidden, forbidden)
 				}
 			}
 		}
@@ -305,7 +286,6 @@ func (s *Sandbox) checkExpr(expr ast.Expr) error {
 	return nil
 }
 
-// SetupSandbox 设置Lua沙箱环境
 func (s *Sandbox) SetupSandbox(L *lua.LState) {
 	for _, forbidden := range forbiddenGlobals {
 		L.SetGlobal(forbidden, lua.LNil)
@@ -327,34 +307,30 @@ func (s *Sandbox) ExecuteWithSandbox(L *lua.LState, script string, _ time.Durati
 	case err := <-done:
 		return err
 	case <-time.After(timeoutDuration):
-		return fmt.Errorf("脚本执行超时 (%v)", timeoutDuration)
+		return fmt.Errorf("script execution timeout: (%v)", timeoutDuration)
 	}
 }
 
 func CreateSecureEnvironment(config *SecurityConfig) *lua.LState {
 	L := lua.NewState(lua.Options{SkipOpenLibs: true})
 
-	// 加载安全的库
-	lua.OpenBase(L)      // 基础函数
-	lua.OpenTable(L)     // table 库
-	lua.OpenString(L)    // string 库
-	lua.OpenMath(L)      // math 库
-	lua.OpenCoroutine(L) // coroutine 库
-	lua.OpenOs(L)        // os 包
+	lua.OpenBase(L)
+	lua.OpenTable(L)
+	lua.OpenString(L)
+	lua.OpenMath(L)
+	lua.OpenCoroutine(L)
+	lua.OpenOs(L)
 
 	sandbox := NewSandbox(config)
-	// 对 os 包的危险函数进行权限沙箱封装
 	sandboxOsFunctions(L, sandbox)
 	sandbox.SetupSandbox(L)
 
 	return L
 }
 
-// sandboxOsFunctions 对 os 包的危险函数进行权限校验封装
 func sandboxOsFunctions(L *lua.LState, sandbox *Sandbox) {
 	osTable := L.GetGlobal("os").(*lua.LTable)
 
-	// 需要权限校验的危险 os 函数
 	dangerousFuncs := []string{"execute", "exit", "getenv", "remove", "rename", "tmpname"}
 
 	for _, funcName := range dangerousFuncs {
@@ -366,7 +342,6 @@ func sandboxOsFunctions(L *lua.LState, sandbox *Sandbox) {
 		name := funcName // 创建闭包副本
 
 		osTable.RawSetString(name, L.NewFunction(func(L *lua.LState) int {
-			// 检查 system 权限
 			if !sandbox.RequestPermission(PermissionRequest{
 				Type:        PermSystem,
 				Description: "系统操作: os." + name,
@@ -377,7 +352,6 @@ func sandboxOsFunctions(L *lua.LState, sandbox *Sandbox) {
 				return 2
 			}
 
-			// 调用原始函数
 			numArgs := L.GetTop()
 			L.Push(origFn)
 			for i := 1; i <= numArgs; i++ {
