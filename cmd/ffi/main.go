@@ -4,7 +4,7 @@ package main
 #include <stdlib.h>
 
 // 宿主程序的权限回调函数类型
-// perm_type:     "exec", "network", "file_read", "file_write"
+// perm_type:     "exec", "network", "file_read", "file_write", "system"
 // description:   可读的权限描述
 // details_json:  附加信息 JSON (url, path, program 等)
 // 返回 1=允许, 0=拒绝
@@ -72,8 +72,11 @@ func OShinExecute(cScript *C.char, cParams *C.char, cMode *C.char, cConfigJSON *
 		if configJSON != "" {
 			var cfgMap map[string]interface{}
 			if err := json.Unmarshal([]byte(configJSON), &cfgMap); err == nil {
-				if timeout, ok := cfgMap["timeout"].(float64); ok {
-					config.Timeout = int(timeout)
+				if v, ok := cfgMap["timeout"].(float64); ok {
+					config.Timeout = int(v)
+				}
+				if v, ok := cfgMap["max_memory_mb"].(float64); ok {
+					config.MaxMemoryMB = int(v)
 				}
 				if preAuth, ok := cfgMap["pre_authorized"].([]interface{}); ok {
 					config.PreAuthorized = make(map[plugin.PermissionType]bool)
