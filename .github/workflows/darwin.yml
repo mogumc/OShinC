@@ -47,7 +47,7 @@ jobs:
         run: |
           mkdir -p dist
           go build -trimpath -ldflags "-s -w -X main.version=${{ steps.version.outputs.VERSION }}" \
-            -o ../dist/oshinc-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/cli/
+            -o ./dist/oshinc-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/cli/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -93,7 +93,7 @@ jobs:
           mkdir -p dist
           go build -trimpath -ldflags "-s -w -X main.version=${{ steps.version.outputs.VERSION }}" \
             -buildmode=c-shared \
-            -o ../dist/liboshinc-${{ matrix.goos }}-${{ matrix.goarch }}.dylib ./cmd/ffi/
+            -o ./dist/liboshinc-${{ matrix.goos }}-${{ matrix.goarch }}.dylib ./cmd/ffi/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
