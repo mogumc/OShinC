@@ -1,10 +1,16 @@
 package plugin
 
 import (
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -351,6 +357,84 @@ func (c *Core) registerBuiltinFunctions(L *lua.LState) {
 		}
 
 		L.Push(lua.LBool(true))
+		return 1
+	}))
+
+	L.SetGlobal("url_encode", L.NewFunction(func(L *lua.LState) int {
+		str := L.CheckString(1)
+		encoded := url.QueryEscape(str)
+		L.Push(lua.LString(encoded))
+		return 1
+	}))
+
+	L.SetGlobal("url_decode", L.NewFunction(func(L *lua.LState) int {
+		str := L.CheckString(1)
+		decoded, err := url.QueryUnescape(str)
+		if err != nil {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+		L.Push(lua.LString(decoded))
+		return 1
+	}))
+
+	L.SetGlobal("md5", L.NewFunction(func(L *lua.LState) int {
+		str := L.CheckString(1)
+		hash := md5.Sum([]byte(str))
+		L.Push(lua.LString(fmt.Sprintf("%x", hash)))
+		return 1
+	}))
+
+	L.SetGlobal("sha256", L.NewFunction(func(L *lua.LState) int {
+		str := L.CheckString(1)
+		hash := sha256.Sum256([]byte(str))
+		L.Push(lua.LString(fmt.Sprintf("%x", hash)))
+		return 1
+	}))
+
+	L.SetGlobal("sha1", L.NewFunction(func(L *lua.LState) int {
+		str := L.CheckString(1)
+		hash := sha1.Sum([]byte(str))
+		L.Push(lua.LString(fmt.Sprintf("%x", hash)))
+		return 1
+	}))
+
+	L.SetGlobal("base64_encode", L.NewFunction(func(L *lua.LState) int {
+		str := L.CheckString(1)
+		encoded := base64.StdEncoding.EncodeToString([]byte(str))
+		L.Push(lua.LString(encoded))
+		return 1
+	}))
+
+	L.SetGlobal("base64_decode", L.NewFunction(func(L *lua.LState) int {
+		str := L.CheckString(1)
+		decoded, err := base64.StdEncoding.DecodeString(str)
+		if err != nil {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+		L.Push(lua.LString(string(decoded)))
+		return 1
+	}))
+
+	L.SetGlobal("hex_encode", L.NewFunction(func(L *lua.LState) int {
+		str := L.CheckString(1)
+		encoded := hex.EncodeToString([]byte(str))
+		L.Push(lua.LString(encoded))
+		return 1
+	}))
+
+	L.SetGlobal("hex_decode", L.NewFunction(func(L *lua.LState) int {
+		str := L.CheckString(1)
+		decoded, err := hex.DecodeString(str)
+		if err != nil {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+		L.Push(lua.LString(string(decoded)))
 		return 1
 	}))
 }
