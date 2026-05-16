@@ -225,8 +225,9 @@ func (c *Core) registerBuiltinFunctions(L *lua.LState) {
 			Description: "网络请求: " + method + " " + url,
 			Details:     map[string]string{"url": url, "method": method},
 		}) {
-			L.Push(lua.LString(`{"error":"permission denied: network"}`))
-			return 1
+			L.Push(lua.LString(""))
+			L.Push(lua.LString("permission denied: network"))
+			return 2
 		}
 
 		result, err := c.httpRequest(url, method, body)
